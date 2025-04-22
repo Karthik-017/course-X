@@ -36,14 +36,36 @@ adminRouter.post("/course", adminMiddleware, async (req, res) => {
 });
 
 adminRouter.put("/course", adminMiddleware, async (req, res) => {
-  const adminId = req.userId;
+  const adminId = req.userId; // Authenticated admin ID
   const { title, description, imageUrl, price, courseId } = req.body;
-  await prisma.course.update({
-    where: { id: courseId },
-    data: { title, description, imageUrl, price },
-  });
-  res.json({ message: "course updated", courseId });
+
+  try {
+    // Check if course exists and belongs to this admin
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+    });
+
+    if (!course) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+
+    if (course.creatorId !== adminId) {
+      return res.status(403).json({ error: "Not authorized to edit this course" });
+    }
+
+    const updatedCourse = await prisma.course.update({
+      where: { id: courseId },
+      data: { title, description, imageUrl, price },
+    });
+
+    res.json({ message: "Course updated successfully", course: updatedCourse });
+
+  } catch (error) {
+    console.error("Error updating course:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
+
 
 adminRouter.get("/course/bulk", adminMiddleware, async (req, res) => {
   const adminId = req.userId;

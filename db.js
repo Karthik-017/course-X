@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-// mongoose.connect("mongodb+srv://kushalrdev:kushalr.dev@cluster0.hko96.mongodb.net/coursex")
 
  const Schema = mongoose.Schema;
 

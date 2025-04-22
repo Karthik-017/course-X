@@ -1,40 +1,21 @@
 const { Router } = require("express");
-const user = require("./user");
 const { userMiddleware } = require("../middleware/user");
-const { courseModel } = require("../db");
-const {purchaseModel} = require("../db");
+const prisma = require("../prisma");
 
-courseRouter = Router();
+const courseRouter = Router();
 
 courseRouter.get("/preview", async (req, res) => {
-  
-  const courses = await courseModel.find({});
-
-
-  
-  res.json({
-    message:"preview course",
-    courses
-  })
-})
-
-
-
+  const courses = await prisma.course.findMany();
+  res.json({ message: "preview course", courses });
+});
 
 courseRouter.post("/purchase", userMiddleware, async (req, res) => {
   const userId = req.userId;
-  const courseId = req.body.courseId;
-  
-  await purchaseModel.create({
-    userId,
-    courseId
+  const { courseId } = req.body;
+  await prisma.purchase.create({
+    data: { userId, courseId },
   });
-  
-  res.json({
-    message:"Course purchased successfully"
-  });
-})
+  res.json({ message: "Course purchased successfully" });
+});
 
-module.exports = {
-  courseRouter : courseRouter
-}
+module.exports = { courseRouter };

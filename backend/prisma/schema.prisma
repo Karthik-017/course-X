@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "./node_modules/@prisma/client"
 }
 
 datasource db {
@@ -14,6 +13,8 @@ model User {
   lastName  String
   email     String     @unique
   password  String
+  phone      String     
+  bio        String?
   purchases Purchase[]
 }
 
@@ -35,6 +36,28 @@ model Course {
   creatorId   Int
   creator     Admin      @relation("AdminCourses", fields: [creatorId], references: [id])
   purchases   Purchase[]
+  sections    Section[]  // This relation needs to be migrated
+}
+
+model Section {
+  id        Int       @id @default(autoincrement())
+  title     String
+  order     Int       
+  courseId  Int
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  contents  Content[] 
+}
+
+model Content {
+  id        Int       @id @default(autoincrement())
+  title     String
+  type      String    // e.g., "video", "text", "quiz"
+  url       String?   // URL for videos
+  text      String?   // For text content
+  duration  Int?      // Duration in minutes for videos
+  order     Int       // To maintain content order within a section
+  sectionId Int
+  section   Section   @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 }
 
 model Purchase {

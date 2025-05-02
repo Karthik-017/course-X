@@ -1,6 +1,6 @@
 const { Router } = require("express");
 const adminRouter = Router();
-const prisma = require("../prisma");
+const prisma = require("../prismaClient");
 const jwt = require("jsonwebtoken");
 const { JWT_ADMIN_PASSWORD } = require("../config");
 const { adminMiddleware } = require("../middleware/admin");
@@ -26,13 +26,54 @@ adminRouter.post("/signin", async (req, res) => {
   }
 });
 
+// Create a new course
 adminRouter.post("/course", adminMiddleware, async (req, res) => {
   const adminId = req.userId;
-  const { title, description, imageUrl, price } = req.body;
-  const course = await prisma.course.create({
-    data: { title, description, imageUrl, price, creatorId: adminId },
-  });
-  res.json({ message: "course created", courseId: course.id });
+  const { title, description, imageUrl, price, sections } = req.body;
+  
+  try {
+    // Create course with optional nested sections and content
+    const course = await prisma.course.create({
+      data: {
+        title, 
+        description, 
+        imageUrl, 
+        price, 
+        creatorId: adminId,
+        sections: sections ? {
+          create: sections.map((section, sIndex) => ({
+            title: section.title,
+            order: section.order || sIndex + 1,
+            contents: section.contents ? {
+              create: section.contents.map((content, cIndex) => ({
+                title: content.title,
+                type: content.type,
+                url: content.url,
+                text: content.text,
+                duration: content.duration,
+                order: content.order || cIndex + 1
+              }))
+            } : undefined
+          }))
+        } : undefined
+      },
+      include: {
+        sections: {
+          include: {
+            contents: true
+          },
+          orderBy: {
+            order: 'asc'
+          }
+        }
+      }
+    });
+    
+    res.json({ message: "course created", course });
+  } catch (error) {
+    console.error("Error creating course:", error);
+    res.status(500).json({ error: "Failed to create course", details: error.message });
+  }
 });
 
 adminRouter.put("/course", adminMiddleware, async (req, res) => {
@@ -66,13 +107,50 @@ adminRouter.put("/course", adminMiddleware, async (req, res) => {
   }
 });
 
-
 adminRouter.get("/course/bulk", adminMiddleware, async (req, res) => {
   const adminId = req.userId;
   const courses = await prisma.course.findMany({
     where: { creatorId: adminId },
   });
   res.json({ message: "courses found", courses });
+});
+
+adminRouter.get("/course/:courseId", adminMiddleware, async (req, res) => {
+  const adminId = req.userId;
+  const courseId = parseInt(req.params.courseId);
+  
+  try {
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      include: {
+        sections: {
+          include: {
+            contents: {
+              orderBy: {
+                order: 'asc'
+              }
+            }
+          },
+          orderBy: {
+            order: 'asc'
+          }
+        }
+      }
+    });
+    
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+    
+    if (course.creatorId !== adminId) {
+      return res.status(403).json({ message: "Not authorized to access this course" });
+    }
+    
+    res.json({ message: "Course found", course });
+  } catch (error) {
+    console.error("Error fetching course:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 adminRouter.delete("/course", adminMiddleware, async (req, res) => {
@@ -103,5 +181,394 @@ adminRouter.delete("/course", adminMiddleware, async (req, res) => {
   }
 });
 
+// SECTION ROUTES
+
+// Create a new section for a course
+adminRouter.post("/section", adminMiddleware, async (req, res) => {
+  const adminId = req.userId;
+  const { courseId, title, order } = req.body;
+  
+  try {
+    // Verify course ownership
+    const course = await prisma.course.findUnique({
+      where: { id: courseId }
+    });
+    
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+    
+    if (course.creatorId !== adminId) {
+      return res.status(403).json({ message: "Not authorized to modify this course" });
+    }
+    
+    // Get highest order if not specified
+    let sectionOrder = order;
+    if (!sectionOrder) {
+      const highestOrderSection = await prisma.section.findFirst({
+        where: { courseId },
+        orderBy: { order: 'desc' }
+      });
+      sectionOrder = highestOrderSection ? highestOrderSection.order + 1 : 1;
+    }
+    
+    // Create the section
+    const section = await prisma.section.create({
+      data: {
+        title,
+        order: sectionOrder,
+        courseId
+      }
+    });
+    
+    res.json({ message: "Section created successfully", section });
+  } catch (error) {
+    console.error("Error creating section:", error);
+    res.status(500).json({ error: "Failed to create section" });
+  }
+});
+
+// Update a section
+adminRouter.put("/section/:sectionId", adminMiddleware, async (req, res) => {
+  const adminId = req.userId;
+  const sectionId = parseInt(req.params.sectionId);
+  const { title, order } = req.body;
+  
+  try {
+    // Get the section with its course to verify ownership
+    const section = await prisma.section.findUnique({
+      where: { id: sectionId },
+      include: { course: true }
+    });
+    
+    if (!section) {
+      return res.status(404).json({ message: "Section not found" });
+    }
+    
+    if (section.course.creatorId !== adminId) {
+      return res.status(403).json({ message: "Not authorized to modify this section" });
+    }
+    
+    // Only update the title if provided
+    const updateData = { title: title !== undefined ? title : section.title };
+    
+    // We'll ignore manual order updates since we should use the reordering endpoint instead
+    // This keeps the section creation and update logic simpler
+    
+    // Update the section
+    const updatedSection = await prisma.section.update({
+      where: { id: sectionId },
+      data: updateData
+    });
+    
+    res.json({ message: "Section updated successfully", section: updatedSection });
+  } catch (error) {
+    console.error("Error updating section:", error);
+    res.status(500).json({ error: "Failed to update section" });
+  }
+});
+
+// Get all sections for a course
+adminRouter.get("/course/:courseId/sections", adminMiddleware, async (req, res) => {
+  const adminId = req.userId;
+  const courseId = parseInt(req.params.courseId);
+  
+  try {
+    // Verify course ownership
+    const course = await prisma.course.findUnique({
+      where: { id: courseId }
+    });
+    
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+    
+    if (course.creatorId !== adminId) {
+      return res.status(403).json({ message: "Not authorized to access this course" });
+    }
+    
+    // Get all sections for the course
+    const sections = await prisma.section.findMany({
+      where: { courseId },
+      include: { contents: true },
+      orderBy: { order: 'asc' }
+    });
+    
+    res.json({ message: "Sections retrieved successfully", sections });
+  } catch (error) {
+    console.error("Error retrieving sections:", error);
+    res.status(500).json({ error: "Failed to retrieve sections" });
+  }
+});
+
+// Delete a section
+adminRouter.delete("/section/:sectionId", adminMiddleware, async (req, res) => {
+  const adminId = req.userId;
+  const sectionId = parseInt(req.params.sectionId);
+  
+  try {
+    // Get the section with its course to verify ownership
+    const section = await prisma.section.findUnique({
+      where: { id: sectionId },
+      include: { course: true }
+    });
+    
+    if (!section) {
+      return res.status(404).json({ message: "Section not found" });
+    }
+    
+    if (section.course.creatorId !== adminId) {
+      return res.status(403).json({ message: "Not authorized to delete this section" });
+    }
+    
+    // Delete the section (this will cascade delete associated contents)
+    await prisma.section.delete({
+      where: { id: sectionId }
+    });
+    
+    res.json({ message: "Section deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting section:", error);
+    res.status(500).json({ error: "Failed to delete section" });
+  }
+});
+
+// CONTENT ROUTES
+
+// Create new content in a section
+adminRouter.post("/content", adminMiddleware, async (req, res) => {
+  const adminId = req.userId;
+  const { sectionId, title, type, url, text, duration } = req.body;
+  
+  try {
+    // Get the section with course to verify ownership
+    const section = await prisma.section.findUnique({
+      where: { id: sectionId },
+      include: { course: true }
+    });
+    
+    if (!section) {
+      return res.status(404).json({ message: "Section not found" });
+    }
+    
+    if (section.course.creatorId !== adminId) {
+      return res.status(403).json({ message: "Not authorized to modify this section" });
+    }
+    
+    // Always get the highest order and add 1
+    const highestOrderContent = await prisma.content.findFirst({
+      where: { sectionId },
+      orderBy: { order: 'desc' }
+    });
+    const newOrder = highestOrderContent ? highestOrderContent.order + 1 : 1;
+    
+    // Create the content with the new order
+    const content = await prisma.content.create({
+      data: {
+        title,
+        type,
+        url,
+        text,
+        duration,
+        order: newOrder,
+        sectionId
+      }
+    });
+    
+    res.json({ message: "Content created successfully", content });
+  } catch (error) {
+    console.error("Error creating content:", error);
+    res.status(500).json({ error: "Failed to create content" });
+  }
+});
+
+// Update content
+adminRouter.put("/content/:contentId", adminMiddleware, async (req, res) => {
+  const adminId = req.userId;
+  const contentId = parseInt(req.params.contentId);
+  const { title, type, url, text, duration } = req.body;
+  
+  try {
+    // Get the content with its section and course to verify ownership
+    const content = await prisma.content.findUnique({
+      where: { id: contentId },
+      include: { 
+        section: {
+          include: { course: true }
+        }
+      }
+    });
+    
+    if (!content) {
+      return res.status(404).json({ message: "Content not found" });
+    }
+    
+    if (content.section.course.creatorId !== adminId) {
+      return res.status(403).json({ message: "Not authorized to modify this content" });
+    }
+    
+    // Update the content, but don't allow direct order update
+    const updatedContent = await prisma.content.update({
+      where: { id: contentId },
+      data: {
+        title: title !== undefined ? title : content.title,
+        type: type !== undefined ? type : content.type,
+        url: url !== undefined ? url : content.url,
+        text: text !== undefined ? text : content.text,
+        duration: duration !== undefined ? duration : content.duration
+        // We'll ignore order updates here, use reorder endpoint instead
+      }
+    });
+    
+    res.json({ message: "Content updated successfully", content: updatedContent });
+  } catch (error) {
+    console.error("Error updating content:", error);
+    res.status(500).json({ error: "Failed to update content" });
+  }
+});
+
+// Get all content items for a section
+adminRouter.get("/section/:sectionId/contents", adminMiddleware, async (req, res) => {
+  const adminId = req.userId;
+  const sectionId = parseInt(req.params.sectionId);
+  
+  try {
+    // Get the section with its course to verify ownership
+    const section = await prisma.section.findUnique({
+      where: { id: sectionId },
+      include: { course: true }
+    });
+    
+    if (!section) {
+      return res.status(404).json({ message: "Section not found" });
+    }
+    
+    if (section.course.creatorId !== adminId) {
+      return res.status(403).json({ message: "Not authorized to access this content" });
+    }
+    
+    // Get all content for the section
+    const contents = await prisma.content.findMany({
+      where: { sectionId },
+      orderBy: { order: 'asc' }
+    });
+    
+    res.json({ message: "Content retrieved successfully", contents });
+  } catch (error) {
+    console.error("Error retrieving content:", error);
+    res.status(500).json({ error: "Failed to retrieve content" });
+  }
+});
+
+// Delete content
+adminRouter.delete("/content/:contentId", adminMiddleware, async (req, res) => {
+  const adminId = req.userId;
+  const contentId = parseInt(req.params.contentId);
+  
+  try {
+    // Get the content with its section and course to verify ownership
+    const content = await prisma.content.findUnique({
+      where: { id: contentId },
+      include: { 
+        section: {
+          include: { course: true }
+        }
+      }
+    });
+    
+    if (!content) {
+      return res.status(404).json({ message: "Content not found" });
+    }
+    
+    if (content.section.course.creatorId !== adminId) {
+      return res.status(403).json({ message: "Not authorized to delete this content" });
+    }
+    
+    // Delete the content
+    await prisma.content.delete({
+      where: { id: contentId }
+    });
+    
+    res.json({ message: "Content deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting content:", error);
+    res.status(500).json({ error: "Failed to delete content" });
+  }
+});
+
+// Reorder sections within a course
+adminRouter.put("/course/:courseId/reorder-sections", adminMiddleware, async (req, res) => {
+  const adminId = req.userId;
+  const courseId = parseInt(req.params.courseId);
+  const { sectionOrder } = req.body; // Array of section IDs in the desired order
+  
+  try {
+    // Verify course ownership
+    const course = await prisma.course.findUnique({
+      where: { id: courseId }
+    });
+    
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+    
+    if (course.creatorId !== adminId) {
+      return res.status(403).json({ message: "Not authorized to modify this course" });
+    }
+    
+    // Update order for each section
+    const updates = sectionOrder.map((sectionId, index) => {
+      return prisma.section.update({
+        where: { id: sectionId },
+        data: { order: index + 1 }
+      });
+    });
+    
+    await prisma.$transaction(updates);
+    
+    res.json({ message: "Sections reordered successfully" });
+  } catch (error) {
+    console.error("Error reordering sections:", error);
+    res.status(500).json({ error: "Failed to reorder sections" });
+  }
+});
+
+// Reorder content within a section
+adminRouter.put("/section/:sectionId/reorder-contents", adminMiddleware, async (req, res) => {
+  const adminId = req.userId;
+  const sectionId = parseInt(req.params.sectionId);
+  const { contentOrder } = req.body; // Array of content IDs in the desired order
+  
+  try {
+    // Get the section with its course to verify ownership
+    const section = await prisma.section.findUnique({
+      where: { id: sectionId },
+      include: { course: true }
+    });
+    
+    if (!section) {
+      return res.status(404).json({ message: "Section not found" });
+    }
+    
+    if (section.course.creatorId !== adminId) {
+      return res.status(403).json({ message: "Not authorized to modify this section" });
+    }
+    
+    // Update order for each content
+    const updates = contentOrder.map((contentId, index) => {
+      return prisma.content.update({
+        where: { id: contentId },
+        data: { order: index + 1 }
+      });
+    });
+    
+    await prisma.$transaction(updates);
+    
+    res.json({ message: "Content reordered successfully" });
+  } catch (error) {
+    console.error("Error reordering content:", error);
+    res.status(500).json({ error: "Failed to reorder content" });
+  }
+});
 
 module.exports = { adminRouter };

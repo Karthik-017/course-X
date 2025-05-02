@@ -2,14 +2,14 @@ const { Router } = require("express");
 const jwt = require("jsonwebtoken");
 const { JWT_USER_PASSWORD } = require("../config");
 const { userMiddleware } = require("../middleware/user");
-const prisma = require("../prisma");
+const prisma = require("../prismaClient");
 
 const userRouter = Router();
 
 userRouter.post("/signup", async (req, res) => {
-  const { email, password, firstName, lastName } = req.body;
+  const { email, password, firstName, lastName, phone } = req.body;
   await prisma.user.create({
-    data: { email, password, firstName, lastName },
+    data: { email, password, firstName, lastName, phone },
   });
   res.json({ message: "user signup successful" });
 });

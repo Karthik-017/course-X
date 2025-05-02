@@ -1,6 +1,6 @@
 const { Router } = require("express");
 const { userMiddleware } = require("../middleware/user");
-const prisma = require("../prisma");
+const prisma = require("../prismaClient");
 
 const courseRouter = Router();
 

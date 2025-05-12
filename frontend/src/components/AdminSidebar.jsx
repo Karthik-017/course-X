@@ -7,7 +7,7 @@ const AdminSidebar = () => {
     { label: "Admin Signin", path: "/admin/signin" },
     { label: "Create Course", path: "/admin/courses" }, 
     { label: "My Courses", path: "/admin/my-courses" },
-    { label: "Settings", path: "/admin/settings"}
+    { label: "Settings", path: "/settings"}
 ];
 
 return (

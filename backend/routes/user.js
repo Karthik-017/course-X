@@ -34,4 +34,27 @@ userRouter.get("/purchases", userMiddleware, async (req, res) => {
   res.json({ purchases });
 });
 
+
+
+userRouter.get('/me', userMiddleware, async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.userId },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+    },
+  });
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  res.json({ user });
+});
+
+
+
+
 module.exports = { userRouter };

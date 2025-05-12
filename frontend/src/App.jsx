@@ -35,6 +35,7 @@ const App = () => {
           <Route path="/admin/signup" element={<AdminSignup />} />
           <Route path="/admin/signin" element={<AdminSignin />} />
           <Route path="/admin/courses" element={<CreateEditCourse />} />
+          <Route path="/admin/courses/edit/:courseId" element={<CreateEditCourse />} />
           <Route path="/admin/my-courses" element={<MyCourses />} />
     
           {/* User */}

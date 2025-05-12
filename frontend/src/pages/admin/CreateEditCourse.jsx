@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
   DndContext,
   closestCenter,
@@ -17,6 +18,11 @@ import SortableItem from "../../components/SortableItem";
 import API from "../../api";
 
 const CreateEditCourse = () => {
+  const { courseId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isEditMode = !!courseId;
+  
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -25,6 +31,57 @@ const CreateEditCourse = () => {
   });
   const [sections, setSections] = useState([]);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Fetch course data if in edit mode
+  useEffect(() => {
+    const fetchCourseDetails = async () => {
+      if (!isEditMode) return;
+      
+      setLoading(true);
+      try {
+        // Try to use the course from location state first if available
+        if (location.state?.course) {
+          const course = location.state.course;
+          setForm({
+            title: course.title || "",
+            description: course.description || "",
+            imageUrl: course.imageUrl || "",
+            price: course.price || 0,
+          });
+          
+          // If we need to fetch full course details including sections
+          const token = localStorage.getItem("token");
+          const res = await API.get(`http://localhost:8000/admin/course/${courseId}`, {
+            headers: { Authorization: token },
+          });
+          
+          // Format sections and contents from API response
+          if (res.data.course?.sections) {
+            const formattedSections = res.data.course.sections.map(section => ({
+              id: section.id,
+              title: section.title,
+              contents: section.contents.map(content => ({
+                id: content.id,
+                title: content.title,
+                type: content.type,
+                url: content.url || "",
+                text: content.text || "",
+                duration: content.duration || 0,
+              }))
+            }));
+            setSections(formattedSections);
+          }
+        }
+      } catch (err) {
+        setMessage(err.response?.data?.message || "Error fetching course details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourseDetails();
+  }, [courseId, isEditMode, location.state]);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -133,11 +190,53 @@ const CreateEditCourse = () => {
     );
   };
 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   try {
+  //     const token = localStorage.getItem("token");
+
+  //     const formattedSections = sections.map((section, sIdx) => ({
+  //       title: section.title,
+  //       order: sIdx + 1,
+  //       contents: section.contents.map((content, cIdx) => ({
+  //         ...content,
+  //         order: cIdx + 1,
+  //       })),
+  //     }));
+
+  //     const payload = { ...form, sections: formattedSections };
+      
+  //     let res;
+  //     if (isEditMode) {
+  //       // Update existing course
+  //       payload.courseId = courseId;
+  //       res = await API.put("http://localhost:8000/admin/course", payload, {
+  //         headers: { Authorization: token },
+  //       });
+  //       setMessage("Course Updated Successfully");
+  //     } else {
+  //       // Create new course
+  //       res = await API.post("http://localhost:8000/admin/course", payload, {
+  //         headers: { Authorization: token },
+  //       });
+  //       setMessage(`Course Created: ID ${res.data.course?.id}`);
+  //     }
+      
+  //     // Navigate back to courses list after a short delay
+  //     setTimeout(() => {
+  //       navigate("/admin/courses");
+  //     }, 2000);
+      
+  //   } catch (err) {
+  //     setMessage(err.response?.data?.message || `Error ${isEditMode ? 'updating' : 'creating'} course`);
+  //   }
+  // };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-
+  
       const formattedSections = sections.map((section, sIdx) => ({
         title: section.title,
         order: sIdx + 1,
@@ -146,24 +245,46 @@ const CreateEditCourse = () => {
           order: cIdx + 1,
         })),
       }));
-
-      const payload = { ...form, sections: formattedSections };
-
-      const res = await API.post("http://localhost:8000/admin/course", payload, {
-        headers: { Authorization: token },
-      });
-      setMessage(`Course Created: ID ${res.data.course?.id}`);
+  
+      const payload = { 
+        ...form, 
+        sections: formattedSections,
+        courseId: courseId // This will be a string from useParams
+      };
+      
+      let res;
+      if (isEditMode) {
+        res = await API.put("http://localhost:8000/admin/course", payload, {
+          headers: { Authorization: token },
+        });
+        setMessage("Course Updated Successfully");
+      } else {
+        res = await API.post("http://localhost:8000/admin/course", payload, {
+          headers: { Authorization: token },
+        });
+        setMessage(`Course Created: ID ${res.data.course?.id}`);
+      }
+      
+      setTimeout(() => {
+        navigate("/admin/my-courses");
+      }, 2000);
+      
     } catch (err) {
-      setMessage(err.response?.data?.message || "Error creating course");
+      setMessage(err.response?.data?.message || `Error ${isEditMode ? 'updating' : 'creating'} course`);
     }
   };
 
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading course details...</div>;
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded shadow">
-      <h2 className="text-2xl font-bold mb-4">Create Course</h2>
+      <h2 className="text-2xl font-bold mb-4">{isEditMode ? "Edit" : "Create"} Course</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           name="title"
+          value={form.title}
           placeholder="Course Title"
           onChange={handleFormChange}
           className="w-full p-2 border rounded"
@@ -171,6 +292,7 @@ const CreateEditCourse = () => {
         />
         <textarea
           name="description"
+          value={form.description}
           placeholder="Course Description"
           onChange={handleFormChange}
           className="w-full p-2 border rounded"
@@ -178,6 +300,7 @@ const CreateEditCourse = () => {
         />
         <input
           name="imageUrl"
+          value={form.imageUrl}
           placeholder="Image URL"
           onChange={handleFormChange}
           className="w-full p-2 border rounded"
@@ -186,6 +309,7 @@ const CreateEditCourse = () => {
         <input
           name="price"
           type="number"
+          value={form.price}
           placeholder="Price"
           onChange={handleFormChange}
           className="w-full p-2 border rounded"
@@ -194,16 +318,16 @@ const CreateEditCourse = () => {
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSectionDragEnd}>
           <SortableContext items={sections.map((section) => section.id)} strategy={verticalListSortingStrategy}>
-          {sections.map((section, sectionIndex) => (
+            {sections.map((section, sectionIndex) => (
               <SortableItem key={section.id} id={section.id}>
                 <div className="border p-4 my-4 rounded bg-gray-50">
-                <div className="text-md font-semibold text-gray-700 mb-1">Section {sectionIndex + 1}</div>
-<input
-  value={section.title}
-  onChange={(e) => updateSectionTitle(section.id, e.target.value)}
-  placeholder="Section Title"
-  className="w-full p-2 border rounded mb-2"
-/>
+                  <div className="text-md font-semibold text-gray-700 mb-1">Section {sectionIndex + 1}</div>
+                  <input
+                    value={section.title}
+                    onChange={(e) => updateSectionTitle(section.id, e.target.value)}
+                    placeholder="Section Title"
+                    className="w-full p-2 border rounded mb-2"
+                  />
 
                   <DndContext
                     sensors={sensors}
@@ -310,7 +434,7 @@ const CreateEditCourse = () => {
           Add Section
         </button>
         <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded">
-          Create Course
+          {isEditMode ? "Update" : "Create"} Course
         </button>
       </form>
       {message && <p className="mt-4 text-center text-green-600">{message}</p>}

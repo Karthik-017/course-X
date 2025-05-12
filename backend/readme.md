@@ -6,7 +6,7 @@ sudo lsof -i :5432
 
 sudo systemctl stop postgresql
 
-
+npx prisma migrate dev --name init
 
 
 todo:

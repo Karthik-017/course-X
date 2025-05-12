@@ -8,6 +8,7 @@ import AdminSignup from "./pages/admin/AdminSignup";
 import AdminSignin from "./pages/admin/AdminSignin";
 import CreateEditCourse from "./pages/admin/CreateEditCourse";
 import MyCourses from "./pages/admin/MyCourses";
+import CourseDetails from "./pages/courses/CourseDetails";
 
 import UserSignup from "./pages/user/UserSignup";
 import UserSignin from "./pages/user/UserSignin";
@@ -45,6 +46,7 @@ const App = () => {
           {/* Courses */}
           <Route path="/courses/preview" element={<PublicPreview />} />
           <Route path="/courses/purchase" element={<PurchaseCourse />} />
+           <Route path="/course/:id" element={<CourseDetails />} />
           {/* Other */}
           <Route path="/certificates" element={<Certificate />} />
           <Route path="/rewards" element={<Rewards />} />

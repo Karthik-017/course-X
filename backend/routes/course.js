@@ -34,4 +34,61 @@ courseRouter.post("/purchase", userMiddleware, async (req, res) => {
 });
 
 
+courseRouter.get("/:courseId", userMiddleware, async (req, res) => {
+  const userId = req.userId;
+  const courseId = parseInt(req.params.courseId);
+
+  try {
+    // Check if the course exists
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      include: {
+        creator: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        },
+        sections: {
+          orderBy: { order: 'asc' },
+          include: {
+            contents: {
+              orderBy: { order: 'asc' }
+            }
+          }
+        }
+      }
+    });
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    // Check if the user purchased the course
+    const purchase = await prisma.purchase.findFirst({
+      where: {
+        userId,
+        courseId
+      }
+    });
+
+    const isPurchased = !!purchase;
+
+    // If not purchased, remove contents
+    if (!isPurchased) {
+      course.sections = course.sections.map(section => ({
+        ...section,
+        contents: []
+      }));
+    }
+
+    res.json({ message: "Course found", course, isPurchased });
+  } catch (error) {
+    console.error("Error fetching course:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+
 module.exports = { courseRouter };

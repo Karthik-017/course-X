@@ -1,6 +1,8 @@
 import { NavLink } from "react-router-dom";
+import { useSettings } from "../context/SettingsContext";
 
 const Sidebar = () => {
+  const { logo } = useSettings();
   const navItems = [
     { label: "Dashboard", path: "/" },
     { label: "User Signup", path: "/user/signup" },
@@ -11,12 +13,18 @@ const Sidebar = () => {
     { label: "Purchase Course", path: "/courses/purchase" },
     { label: "Certificates", path: "/certificates" },
     { label: "Rewards", path: "/rewards" },
-    { label: "Settings", path: "/user/settings" },
+    { label: "Settings", path: "/settings" },
   ];
 
   return (
     <div className="w-64 bg-gray-100 h-screen p-4 shadow">
-      <h2 className="text-xl font-bold mb-6">LMS Panel</h2>
+      <div className="mb-6 flex justify-center">
+  <img
+    src={logo}
+    alt="LMS Logo"
+    className="h-auto w-auto object-contain" // ← Change h-12 or set a custom height
+  />
+</div>
       <nav className="flex flex-col space-y-2">
         {navItems.map((item) => (
           <NavLink

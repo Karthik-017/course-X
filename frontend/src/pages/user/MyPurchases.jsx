@@ -11,7 +11,9 @@ const MyPurchases = () => {
       try {
         const token = localStorage.getItem("token");
         const res = await API.get("http://localhost:8000/user/purchases", {
-          headers: { Authorization: token }
+          headers: {
+            Authorization: `Bearer ${token}`, // ✅ Correct format
+          },
         });
         setPurchases(res.data.purchases);
       } catch (err) {

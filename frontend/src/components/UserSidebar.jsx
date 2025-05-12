@@ -5,12 +5,13 @@ const UserSidebar = () => {
     { label: "Dashboard", path: "/" },
     { label: "User Signup", path: "/user/signup" },
     { label: "User Signin", path: "/user/signin" },
+    { label: "My Profile", path: "/user/profile" },
     { label: "My Purchases", path: "/user/purchases" },
     { label: "Public Courses", path: "/courses/preview" },
     { label: "Purchase Course", path: "/courses/purchase" },
     { label: "Certificates", path: "/certificates" },
     { label: "Rewards", path: "/rewards" },
-    { label: "Settings", path: "/user/settings" },
+    { label: "Settings", path: "/settings" },
   ];
 
   return (

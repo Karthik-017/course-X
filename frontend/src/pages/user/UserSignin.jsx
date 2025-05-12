@@ -18,9 +18,21 @@ const UserSignin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Signin request
       const res = await API.post("http://localhost:8000/user/signin", form);
-      localStorage.setItem("token", res.data.token);
+      const token = res.data.token;
+      localStorage.setItem("token", token);
+
+      // Fetch user profile
+      const profileRes = await API.get("http://localhost:8000/user/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      localStorage.setItem("user", JSON.stringify(profileRes.data.user));
       setMessage("Signin successful");
+
       navigate("/user/purchases");
     } catch (err) {
       setMessage(err.response?.data?.message || "Signin failed");

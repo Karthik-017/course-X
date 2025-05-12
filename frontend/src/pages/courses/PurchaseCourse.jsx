@@ -30,8 +30,10 @@ const PurchaseCourse = () => {
       const res = await API.post(
         "http://localhost:8000/course/purchase",
         { courseId },
-        { headers: { Authorization: token } }
-      );
+        {headers: {
+          Authorization: `Bearer ${token}`, // ✅ This is required
+        },
+      });
       setMessage(res.data.message);
       setTimeout(() => navigate("/user/purchases"), 1000);
     } catch (err) {

@@ -8,4 +8,4 @@ const UserSettings = () => {
 };
 
 export default UserSettings;
-// This code defines a simple React component for the Settings page.  
+// This code defines a simple React component for the Settings page.

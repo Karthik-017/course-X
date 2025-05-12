@@ -12,6 +12,7 @@ import MyCourses from "./pages/admin/MyCourses";
 import UserSignup from "./pages/user/UserSignup";
 import UserSignin from "./pages/user/UserSignin";
 import MyPurchases from "./pages/user/MyPurchases";
+import MyProfile from "./pages/user/MyProfile";
 
 import PublicPreview from "./pages/courses/PublicPreview";
 import PurchaseCourse from "./pages/courses/PurchaseCourse";
@@ -20,12 +21,12 @@ import Certificate from "./pages/Certificate";
 import Rewards from "./pages/Rewards";
 import Settings from "./pages/Settings";
 
-import UserSettings from "./pages/user/UserSettings";
-import AdminSettings from "./pages/admin/AdminSettings";
+
+
 
 const App = () => {
   return (
-    <Router>
+    
       <Layout>
         <Routes>
           <Route path="/" element={<Dashboard />} />
@@ -34,13 +35,13 @@ const App = () => {
           <Route path="/admin/signin" element={<AdminSignin />} />
           <Route path="/admin/courses" element={<CreateEditCourse />} />
           <Route path="/admin/my-courses" element={<MyCourses />} />
-          <Route path="/admin/settings" element={<AdminSettings />} />
-
+    
           {/* User */}
           <Route path="/user/signup" element={<UserSignup />} />
           <Route path="/user/signin" element={<UserSignin />} />
           <Route path="/user/purchases" element={<MyPurchases />} />
-          <Route path="/user/settings" element={<UserSettings />} />
+          <Route path="/user/profile"element={<MyProfile />}/>
+      
           {/* Courses */}
           <Route path="/courses/preview" element={<PublicPreview />} />
           <Route path="/courses/purchase" element={<PurchaseCourse />} />
@@ -50,7 +51,7 @@ const App = () => {
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>
-    </Router>
+    
   );
 };
 

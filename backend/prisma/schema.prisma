@@ -36,7 +36,8 @@ model Course {
   creatorId   Int
   creator     Admin      @relation("AdminCourses", fields: [creatorId], references: [id])
   purchases   Purchase[]
-  sections    Section[]  // This relation needs to be migrated
+  sections    Section[] 
+  createdAt   DateTime  @default(now()) // This relation needs to be migrated
 }
 
 model Section {

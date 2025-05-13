@@ -607,6 +607,8 @@ adminRouter.put("/section/:sectionId/reorder-contents", adminMiddleware, async (
     res.status(500).json({ error: "Failed to reorder content" });
   }
 });
+
+
 // ADMIN DASHBOARD ROUTES
 
 adminRouter.get("/dashboard", adminMiddleware, async (req, res) => {
@@ -693,7 +695,48 @@ const popularCourses = allCoursesWithPurchases.map(course => ({
   }
 });
 
+// User Growth
+// User Growth with filter support: days, weeks, months, years
+adminRouter.get("/user-growth", adminMiddleware, async (req, res) => {
+  const filter = req.query.filter || 'days'; // default to days
 
+  let dateTruncUnit;
+  switch (filter) {
+    case 'weeks':
+      dateTruncUnit = 'week';
+      break;
+    case 'months':
+      dateTruncUnit = 'month';
+      break;
+    case 'years':
+      dateTruncUnit = 'year';
+      break;
+    case 'days':
+    default:
+      dateTruncUnit = 'day';
+      break;
+  }
 
+  try {
+    const userGrowth = await prisma.$queryRawUnsafe(`
+      SELECT 
+        DATE_TRUNC('${dateTruncUnit}', "createdAt")::DATE AS date,
+        COUNT(*) AS count
+      FROM "User"
+      GROUP BY date
+      ORDER BY date ASC
+    `);
+
+    const formattedData = userGrowth.map(entry => ({
+      date: entry.date.toISOString().split('T')[0], // format: YYYY-MM-DD
+      count: Number(entry.count),
+    }));
+
+    res.json(formattedData);
+  } catch (err) {
+    console.error("Error fetching user growth:", err);
+    res.status(500).json({ error: "Failed to fetch user growth data" });
+  }
+});
 
 module.exports = { adminRouter };

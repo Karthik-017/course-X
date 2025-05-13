@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import API from "../api";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
 } from "recharts";
+const COLORS = ["#4F46E5", "#22C55E", "#F59E0B", "#EC4899", "#06B6D4", "#10B981", "#A855F7"];
+
 
 const Dashboard = () => {
   const [overview, setOverview] = useState({});
@@ -12,42 +15,45 @@ const Dashboard = () => {
   const [totalPurchases, setTotalPurchases] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [popularCourses, setPopularCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [unauthorized, setUnauthorized] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [
-          overviewRes,
-          recentRes,
-          topRes,
-          usersRes,
-          purchasesRes,
-          revenueRes,
-          popularRes,
-        ] = await Promise.all([
-          API.get("/admin/dashboard/overview"),
-          API.get("/admin/dashboard/recent-courses"),
-          API.get("/admin/dashboard/top-courses"),
-          API.get("/admin/dashboard/total-users"),
-          API.get("/admin/dashboard/total-purchases"),
-          API.get("/admin/dashboard/total-revenue"),
-          API.get("/admin/dashboard/popular-courses"),
-        ]);
-
-        setOverview(overviewRes.data);
-        setRecentCourses(recentRes.data);
-        setTopCourses(topRes.data);
-        setTotalUsers(usersRes.data.totalUsers);
-        setTotalPurchases(purchasesRes.data.totalPurchases);
-        setTotalRevenue(revenueRes.data.totalRevenue);
-        setPopularCourses(popularRes.data.popularCourses);
+        const token = localStorage.getItem("token"); // adjust key if different
+  
+        const res = await API.get("/admin/dashboard", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+  
+        const data = res.data;
+  
+        setOverview(data.overview);
+        setRecentCourses(data.recentCourses);
+        setTopCourses(data.topCourses);
+        setTotalUsers(data.totalUsers);
+        setTotalPurchases(data.totalPurchases);
+        setTotalRevenue(data.totalRevenue);
+        setPopularCourses(data.popularCourses);
+        setLoading(false);
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
+        if (err.response && err.response.status === 401) {
+          setUnauthorized(true);
+        }
+        setLoading(false);
       }
     };
-
+  
     fetchDashboardData();
-  }, []);
+  }, [navigate]);
+  
+  
 
   const overviewData = [
     { name: "Courses", value: overview.totalCourses || 0 },
@@ -55,25 +61,40 @@ const Dashboard = () => {
     { name: "Contents", value: overview.totalContents || 0 },
   ];
 
+  if (loading) return <div className="p-6">Loading dashboard...</div>;
+  if (unauthorized) return <div className="p-6 text-red-500 font-semibold">Unauthorized: Admin access only</div>;
+
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">Admin Dashboard</h1>
 
-      {/* Overview Bar Graph */}
-      <div className="bg-white p-4 rounded shadow">
-        <h2 className="text-lg font-semibold mb-4">Overview</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={overviewData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis allowDecimals={false} />
-            <Tooltip />
-            <Bar dataKey="value" fill="#4F46E5" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Overview Pie Chart */}
+{/* Popular Courses Pie Chart */}
+<div className="bg-white p-4 rounded shadow">
+  <h2 className="text-lg font-semibold mb-4">Course Purchase Distribution</h2>
+  <ResponsiveContainer width="100%" height={300}>
+    <PieChart>
+      <Pie
+        data={popularCourses}
+        dataKey="purchaseCount"
+        nameKey="title"
+        cx="50%"
+        cy="50%"
+        outerRadius={100}
+        label={({ name, value }) => `${name}: ${value}`}
+      >
+        {popularCourses.map((entry, index) => (
+          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+        ))}
+      </Pie>
+      <Tooltip />
+    </PieChart>
+  </ResponsiveContainer>
+</div>
 
-      {/* Total Users / Purchases / Revenue Summary */}
+
+
+      {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-blue-100 p-4 rounded">
           <h3 className="text-lg">Total Users</h3>
@@ -113,7 +134,7 @@ const Dashboard = () => {
         </ul>
       </div>
 
-      {/* Popular Courses by Purchases */}
+      {/* Popular Courses */}
       <div>
         <h2 className="text-lg font-semibold mt-6 mb-2">Popular Courses</h2>
         <ul className="bg-white p-4 rounded shadow space-y-2">

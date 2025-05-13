@@ -15,12 +15,12 @@ import UserSignin from "./pages/user/UserSignin";
 import MyPurchases from "./pages/user/MyPurchases";
 import MyProfile from "./pages/user/MyProfile";
 
-import PublicPreview from "./pages/courses/PublicPreview";
-import PurchaseCourse from "./pages/courses/PurchaseCourse";
+import CourseListingPage from "./pages/courses/CourseListingPage";
 
 import Certificate from "./pages/Certificate";
 import Rewards from "./pages/Rewards";
 import Settings from "./pages/Settings";
+
 
 
 
@@ -45,8 +45,7 @@ const App = () => {
           <Route path="/user/profile"element={<MyProfile />}/>
       
           {/* Courses */}
-          <Route path="/courses/preview" element={<PublicPreview />} />
-          <Route path="/courses/purchase" element={<PurchaseCourse />} />
+          <Route path="/courses/CourseListingPage"element={<CourseListingPage />}/>
            <Route path="/course/:id" element={<CourseDetails />} />
           {/* Other */}
           <Route path="/certificates" element={<Certificate />} />

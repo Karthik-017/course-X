@@ -7,13 +7,14 @@ const Sidebar = () => {
     { label: "Dashboard", path: "/" },
     { label: "User Signup", path: "/user/signup" },
     { label: "User Signin", path: "/user/signin" },
-    { label: "Admin Signin", path: "/admin/signin" },
-    { label: "My Purchases", path: "/user/purchases" },
+    
+    
     { label: "Public Courses", path: "/courses/preview" },
     { label: "Purchase Course", path: "/courses/purchase" },
-    { label: "Certificates", path: "/certificates" },
-    { label: "Rewards", path: "/rewards" },
-    { label: "Settings", path: "/settings" },
+    { label: "Admin", path: "/admin/signin" },
+   
+   
+    
   ];
 
   return (

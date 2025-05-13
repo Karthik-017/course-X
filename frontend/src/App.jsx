@@ -14,6 +14,7 @@ import UserSignup from "./pages/user/UserSignup";
 import UserSignin from "./pages/user/UserSignin";
 import MyPurchases from "./pages/user/MyPurchases";
 import MyProfile from "./pages/user/MyProfile";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 import CourseListingPage from "./pages/courses/CourseListingPage";
 
@@ -37,12 +38,14 @@ const App = () => {
           <Route path="/admin/courses" element={<CreateEditCourse />} />
           <Route path="/admin/courses/edit/:courseId" element={<CreateEditCourse />} />
           <Route path="/admin/my-courses" element={<MyCourses />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard/>} />
     
           {/* User */}
           <Route path="/user/signup" element={<UserSignup />} />
           <Route path="/user/signin" element={<UserSignin />} />
           <Route path="/user/purchases" element={<MyPurchases />} />
           <Route path="/user/profile"element={<MyProfile />}/>
+          <Route path="/user/dashboard"element={<MyProfile />}/>
       
           {/* Courses */}
           <Route path="/courses/CourseListingPage"element={<CourseListingPage />}/>
@@ -50,7 +53,6 @@ const App = () => {
           {/* Other */}
           <Route path="/certificates" element={<Certificate />} />
           <Route path="/rewards" element={<Rewards />} />
-          <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>
     

@@ -49,7 +49,21 @@ const MyCourses = () => {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">My Courses</h2>
-      {error && <p className="text-red-600 mb-4">{error}</p>}
+{error && (
+  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+    <p className="font-semibold">Error:</p>
+    <p>
+      {error}.{" "}
+      <a
+        href="/admin/signin"
+        className="text-blue-700 underline hover:text-blue-900"
+      >
+        Please login
+      </a>
+    </p>
+  </div>
+)}
+
       {message && <p className="text-green-600 mb-4">{message}</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

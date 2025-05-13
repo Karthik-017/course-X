@@ -23,14 +23,9 @@ const UserSignin = () => {
       const token = res.data.token;
       localStorage.setItem("token", token);
 
-      // Fetch user profile
-      const profileRes = await API.get("http://localhost:8000/user/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+    
 
-      localStorage.setItem("user", JSON.stringify(profileRes.data.user));
+      // localStorage.setItem("user", JSON.stringify(profileRes.data.user));
       setMessage("Signin successful");
 
       navigate("/user/purchases");

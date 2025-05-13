@@ -572,90 +572,47 @@ adminRouter.put("/section/:sectionId/reorder-contents", adminMiddleware, async (
 });
 // ADMIN DASHBOARD ROUTES
 
-// 1. Dashboard Overview
-adminRouter.get("/dashboard/overview", async (req, res) => {
+adminRouter.get("/dashboard", adminMiddleware, async (req, res) => {
   try {
-    const [totalCourses, totalSections, totalContents] = await Promise.all([
+    // Fetch overview counts
+    const [totalCourses, totalSections, totalContents, totalUsers, totalPurchases] = await Promise.all([
       prisma.course.count(),
       prisma.section.count(),
-      prisma.content.count()
+      prisma.content.count(),
+      prisma.user.count(),
+      prisma.purchase.count(),
     ]);
 
-    res.json({ totalCourses, totalSections, totalContents });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch dashboard data" });
-  }
-});
-
-// 2. Recent Courses
-adminRouter.get("/dashboard/recent-courses", async (req, res) => {
-  try {
+    // Recent Courses
     const recentCourses = await prisma.course.findMany({
       orderBy: { createdAt: "desc" },
-      take: 5
+      take: 5,
     });
-    res.json(recentCourses);
-  } catch (err) {
-    console.error("Error fetching recent courses:", err);
-    res.status(500).json({ error: "Failed to fetch recent courses" });
-  }
-});
 
-
-// 3. Top Courses by Activity
-adminRouter.get("/dashboard/top-courses", async (req, res) => {
-  try {
-    const courses = await prisma.course.findMany({
+    // Top Courses by activity
+    const allCourses = await prisma.course.findMany({
       include: {
         sections: {
           include: {
-            contents: true
-          }
-        }
-      }
+            contents: true,
+          },
+        },
+      },
     });
 
-    const sorted = courses.map(course => {
+    const topCourses = allCourses.map(course => {
       const sectionCount = course.sections.length;
       const contentCount = course.sections.reduce((acc, sec) => acc + sec.contents.length, 0);
       return {
         id: course.id,
         title: course.title,
         sectionCount,
-        contentCount
+        contentCount,
       };
     }).sort((a, b) => b.contentCount - a.contentCount).slice(0, 5);
 
-    res.json(sorted);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch top courses" });
-  }
-});
-// 4. Total Users
-
-adminRouter.get("/dashboard/total-users", async (req, res) => {
-  try {
-    const totalUsers = await prisma.user.count();
-    res.json({ totalUsers });
-  } catch (err) {
-    console.error("Error fetching total users:", err);
-    res.status(500).json({ error: "Failed to fetch total users" });
-  }
-});
-// 5. Total Purchases
-adminRouter.get("/dashboard/total-purchases", async (req, res) => {
-  try {
-    const totalPurchases = await prisma.purchase.count();
-    res.json({ totalPurchases });
-  } catch (err) {
-    console.error("Error fetching total purchases:", err);
-    res.status(500).json({ error: "Failed to fetch total purchases" });
-  }
-});
-// 6. Total Revenue
-adminRouter.get("/dashboard/total-revenue", async (req, res) => {
-  try {
-    const purchases = await prisma.purchase.findMany({
+    // Total Revenue
+    const purchasesWithCourse = await prisma.purchase.findMany({
       include: {
         course: {
           select: { price: true },
@@ -663,55 +620,42 @@ adminRouter.get("/dashboard/total-revenue", async (req, res) => {
       },
     });
 
-    const totalRevenue = purchases.reduce((sum, purchase) => {
+    const totalRevenue = purchasesWithCourse.reduce((sum, purchase) => {
       return sum + (purchase.course?.price || 0);
     }, 0);
 
-    res.json({ totalRevenue });
+    // All Courses with their purchase counts (including 0)
+const allCoursesWithPurchases = await prisma.course.findMany({
+  include: {
+    purchases: true, // assumes Course has a relation: Course -> Purchase[]
+  },
+});
+
+const popularCourses = allCoursesWithPurchases.map(course => ({
+  id: course.id,
+  title: course.title,
+  purchaseCount: course.purchases.length,
+}));
+
+ 
+
+
+    // Final response
+    res.json({
+      overview: { totalCourses, totalSections, totalContents },
+      recentCourses,
+      topCourses,
+      totalUsers,
+      totalPurchases,
+      totalRevenue,
+      popularCourses,
+    });
   } catch (err) {
-    console.error("Error calculating revenue:", err);
-    res.status(500).json({ error: "Failed to calculate total revenue" });
+    console.error("Error fetching dashboard data:", err);
+    res.status(500).json({ error: "Failed to fetch dashboard data" });
   }
 });
 
-
-// 7. Popular Courses
-adminRouter.get("/dashboard/popular-courses", async (req, res) => {
-  try {
-    const popularCourses = await prisma.purchase.groupBy({
-      by: ["courseId"],
-      _count: {
-        courseId: true,
-      },
-      orderBy: {
-        _count: {
-          courseId: "desc",
-        },
-      },
-      take: 5,
-    });
-
-    const courseIds = popularCourses.map(pc => pc.courseId);
-    
-    const courseDetails = await prisma.course.findMany({
-      where: { id: { in: courseIds } },
-    });
-
-    // Merge count with course info
-    const result = courseDetails.map(course => {
-      const match = popularCourses.find(pc => pc.courseId === course.id);
-      return {
-        ...course,
-        purchaseCount: match ? match._count.courseId : 0,
-      };
-    });
-
-    res.json({ popularCourses: result });
-  } catch (err) {
-    console.error("Error fetching popular courses:", err);
-    res.status(500).json({ error: "Failed to fetch popular courses" });
-  }
-});
 
 
 

@@ -5,9 +5,9 @@ const Sidebar = () => {
   const { logo } = useSettings();
   const navItems = [
     { label: "Dashboard", path: "/" },
-    { label: "User Signup", path: "/user/signup" },
-    { label: "User Signin", path: "/user/signin" },
-    { label: "Admin Signin", path: "/admin/signin" },
+    { label: "User auth", path: "/user/auth" },
+    // { label: "User Signin", path: "/user/signin" },
+    { label: "Admin Login", path: "/admin/auth" },
     { label: "My Purchases", path: "/user/purchases" },
     { label: "Public Courses", path: "/courses/preview" },
     { label: "Purchase Course", path: "/courses/purchase" },

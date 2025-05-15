@@ -3,8 +3,7 @@ import { NavLink } from "react-router-dom";
 const UserSidebar = () => {
   const navItems = [
     { label: "Dashboard", path: "/" },
-    { label: "User Signup", path: "/user/signup" },
-    { label: "User Signin", path: "/user/signin" },
+    { label: "User Auth", path: "/user/auth" },
     { label: "My Profile", path: "/user/profile" },
     { label: "My Purchases", path: "/user/purchases" },
     { label: "Public Courses", path: "/courses/preview" },

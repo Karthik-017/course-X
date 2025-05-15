@@ -1,11 +1,47 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import API from "../../api";
 
 const MyProfile = () => {
-  const user = JSON.parse(localStorage.getItem("user")) || {
-    firstName: "",
-    lastName: "",
-    email: "",
+  const [user, setUser] = useState({
+        "email": "",
+        "firstName": "",
+        "lastName": ""
+  });
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+  const fetchProfile = async () => {
+    const token = localStorage.getItem("token");
+
+    try {
+      const response = await API.get("http://localhost:8000/user/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // Extract user object from response
+      setUser(response.data.user);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  fetchProfile();
+}, []);
+
+
+if(loading){
+    return (
+      <div className="p-6 max-w-md mx-auto bg-white rounded-lg shadow-md text-center">
+        <p className="text-gray-600">Loading profile...</p>
+      </div>
+    );
+}
 
   return (
     <div className="p-6 max-w-md mx-auto bg-white rounded-lg shadow-md">

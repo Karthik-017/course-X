@@ -11,7 +11,13 @@ courseRouter.get("/preview", async (req, res) => {
 
 courseRouter.post("/purchase", userMiddleware, async (req, res) => {
   const userId = req.userId;
-  const { courseId } = req.body;
+ const courseId = parseInt(req.body.courseId, 10); // Convert courseId to integer
+
+  if (isNaN(courseId)) {
+    return res.status(400).json({ message: "Invalid course ID" });
+  }
+
+
 
   // Check if the user already purchased this course
   const existingPurchase = await prisma.purchase.findFirst({

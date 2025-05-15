@@ -3,8 +3,7 @@ import { NavLink } from "react-router-dom";
 const AdminSidebar = () => {
   const navItems = [
     {label: "Dashboard", path: "/" },
-    {label: "Admin Signup", path: "/admin/signup" },
-    { label: "Admin Signin", path: "/admin/signin" },
+    { label: "Admin Signin", path: "/admin/auth" },
     { label: "Create Course", path: "/admin/courses" }, 
     { label: "My Courses", path: "/admin/my-courses" },
     { label: "Admin Dashboard", path: "/admin/dashboard" },

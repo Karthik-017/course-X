@@ -76,9 +76,46 @@ adminRouter.post("/course", adminMiddleware, async (req, res) => {
   }
 });
 
+// adminRouter.put("/course", adminMiddleware, async (req, res) => {
+//   const adminId = req.userId; // Authenticated admin ID
+//   const { title, description, imageUrl, price, courseId } = req.body;
+
+//   try {
+//     // Convert courseId to integer
+//     const courseIdInt = parseInt(courseId, 10);
+//     if (isNaN(courseIdInt)) {
+//       return res.status(400).json({ error: "Invalid course ID" });
+//     }
+
+//     // Check if course exists and belongs to this admin
+//     const course = await prisma.course.findUnique({
+//       where: { id: courseIdInt },
+//     });
+
+//     if (!course) {
+//       return res.status(404).json({ error: "Course not found" });
+//     }
+
+//     if (course.creatorId !== adminId) {
+//       return res.status(403).json({ error: "Not authorized to edit this course" });
+//     }
+
+//     const updatedCourse = await prisma.course.update({
+//       where: { id: courseIdInt },
+//       data: { title, description, imageUrl, price },
+//     });
+
+//     res.json({ message: "Course updated successfully", course: updatedCourse });
+
+//   } catch (error) {
+//     console.error("Error updating course:", error);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// });
+
 adminRouter.put("/course", adminMiddleware, async (req, res) => {
-  const adminId = req.userId; // Authenticated admin ID
-  const { title, description, imageUrl, price, courseId } = req.body;
+  const adminId = req.userId;
+  const { title, description, imageUrl, price, courseId, sections } = req.body;
 
   try {
     // Convert courseId to integer
@@ -90,6 +127,13 @@ adminRouter.put("/course", adminMiddleware, async (req, res) => {
     // Check if course exists and belongs to this admin
     const course = await prisma.course.findUnique({
       where: { id: courseIdInt },
+      include: {
+        sections: {
+          include: {
+            contents: true
+          }
+        }
+      }
     });
 
     if (!course) {
@@ -100,12 +144,49 @@ adminRouter.put("/course", adminMiddleware, async (req, res) => {
       return res.status(403).json({ error: "Not authorized to edit this course" });
     }
 
-    const updatedCourse = await prisma.course.update({
-      where: { id: courseIdInt },
-      data: { title, description, imageUrl, price },
+    // Use a transaction to ensure all updates succeed or fail together
+    const updatedCourse = await prisma.$transaction(async (prisma) => {
+      // Update basic course info
+      const courseUpdate = await prisma.course.update({
+        where: { id: courseIdInt },
+        data: { title, description, imageUrl, price },
+      });
+
+      // First, delete all existing sections and contents (cascade will handle contents)
+      await prisma.section.deleteMany({
+        where: { courseId: courseIdInt }
+      });
+
+      // Then recreate all sections with their contents
+      if (sections && sections.length > 0) {
+        for (const section of sections) {
+          await prisma.section.create({
+            data: {
+              title: section.title,
+              order: section.order,
+              courseId: courseIdInt,
+              contents: {
+                create: section.contents.map(content => ({
+                  title: content.title,
+                  type: content.type,
+                  url: content.url || null,
+                  text: content.text || null,
+                  duration: content.duration || null,
+                  order: content.order
+                }))
+              }
+            }
+          });
+        }
+      }
+
+      return courseUpdate;
     });
 
-    res.json({ message: "Course updated successfully", course: updatedCourse });
+    res.json({ 
+      message: "Course updated successfully", 
+      course: updatedCourse 
+    });
 
   } catch (error) {
     console.error("Error updating course:", error);
@@ -664,41 +745,30 @@ const popularCourses = allCoursesWithPurchases.map(course => ({
   }
 });
 
-// User Growth
-// User Growth with filter support: days, weeks, months, years
 adminRouter.get("/user-growth", adminMiddleware, async (req, res) => {
-  const filter = req.query.filter || 'days'; // default to days
-
-  let dateTruncUnit;
-  switch (filter) {
-    case 'weeks':
-      dateTruncUnit = 'week';
-      break;
-    case 'months':
-      dateTruncUnit = 'month';
-      break;
-    case 'years':
-      dateTruncUnit = 'year';
-      break;
-    case 'days':
-    default:
-      dateTruncUnit = 'day';
-      break;
+  const filter = req.query.filter || 'days'; // default to day
+  const allowedFilters = ['days', 'weeks', 'months', 'years'];
+  
+  // Validate filter input
+  if (!allowedFilters.includes(filter)) {
+    return res.status(400).json({ error: "Invalid filter parameter" });
   }
 
   try {
-    const userGrowth = await prisma.$queryRawUnsafe(`
+    // Using parameterized query with the correct column name
+    const userGrowth = await prisma.$queryRaw`
       SELECT 
-        DATE_TRUNC('${dateTruncUnit}', "createdAt")::DATE AS date,
-        COUNT(*) AS count
+        DATE_TRUNC(${filter}, "created_at")::DATE AS date,
+        COUNT(*)::INTEGER AS count
       FROM "User"
       GROUP BY date
       ORDER BY date ASC
-    `);
+    `;
 
+    // Format the response
     const formattedData = userGrowth.map(entry => ({
-      date: entry.date.toISOString().split('T')[0], // format: YYYY-MM-DD
-      count: Number(entry.count),
+      date: entry.date.toISOString().split('T')[0], // YYYY-MM-DD format
+      count: entry.count
     }));
 
     res.json(formattedData);

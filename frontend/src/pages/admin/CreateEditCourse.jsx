@@ -436,6 +436,10 @@ const CreateEditCourse = () => {
         <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded">
           {isEditMode ? "Update" : "Create"} Course
         </button>
+        <button type="button" onClick={()=>navigate("/admin/my-courses")} className="w-full bg-red-600 text-white py-2 rounded">
+          Close
+        </button>
+
       </form>
       {message && <p className="mt-4 text-center text-green-600">{message}</p>}
     </div>

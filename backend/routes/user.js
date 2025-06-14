@@ -239,6 +239,60 @@ userRouter.get("/dashboard", userMiddleware, async (req, res) => {
   }
 });
 
+// Get social links
+userRouter.get('/me/socials', userMiddleware, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: {
+        socialLinks: true
+      }
+    });
 
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Return empty object if no social links exist
+    res.json({ socialLinks: user.socialLinks || {} });
+  } catch (error) {
+    console.error("Error fetching social links:", error);
+    res.status(500).json({ message: "Error fetching social links" });
+  }
+});
+
+// Update social links
+userRouter.put('/me/socials', userMiddleware, async (req, res) => {
+  const { twitter, github, linkedin } = req.body;
+
+  try {
+    // Validate input
+    if (!twitter && !github && !linkedin) {
+      return res.status(400).json({ message: "At least one social link is required" });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: req.userId },
+      data: {
+        socialLinks: {
+          twitter: twitter || null,
+          github: github || null,
+          linkedin: linkedin || null
+        }
+      },
+      select: {
+        socialLinks: true
+      }
+    });
+
+    res.json({ 
+      message: "Social links updated successfully",
+      socialLinks: updatedUser.socialLinks 
+    });
+  } catch (error) {
+    console.error("Error updating social links:", error);
+    res.status(500).json({ message: "Error updating social links" });
+  }
+});
 
 module.exports = { userRouter };

@@ -22,6 +22,8 @@ import Rewards from "./pages/Rewards";
 import Settings from "./pages/Settings";
 import UserAuthPage from "./pages/user/UserAuthPage";
 import AdminAuthPage from "./pages/admin/AdminAuthPage";
+import UserSettings from "./pages/user/UserSettings";
+import UserDashboard from "./pages/user/UserDashboard";
 
 
 
@@ -44,7 +46,8 @@ const App = () => {
           <Route path="/user/auth" element={<UserAuthPage />} />
           <Route path="/user/purchases" element={<MyPurchases />} />
           <Route path="/user/profile"element={<MyProfile />}/>
-          <Route path="/user/dashboard"element={<MyProfile />}/>
+          <Route path="/user/dashboard"element={<UserDashboard />}/>
+          <Route path="/user/settings"element={<UserSettings />}/>
       
           {/* Courses */}
           <Route path="/courses/CourseListingPage"element={<CourseListingPage />}/>

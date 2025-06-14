@@ -37,14 +37,8 @@ userRouter.get("/purchases", userMiddleware, async (req, res) => {
 
 
 userRouter.get('/me', userMiddleware, async (req, res) => {
-  const user = await prisma.user.findUnique({
+ const user = await prisma.user.findUnique({
     where: { id: req.userId },
-    select: {
-      id: true,
-      email: true,
-      firstName: true,
-      lastName: true,
-    },
   });
 
   if (!user) {
@@ -54,8 +48,67 @@ userRouter.get('/me', userMiddleware, async (req, res) => {
   res.json({ user });
 });
 
+userRouter.put('/me', userMiddleware, async (req, res) => {
+  const { firstName, lastName, phone, bio, username, occupation } = req.body;
 
-userRouter.get("/:courseId", userMiddleware, async (req, res) => {
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id: req.userId },
+      data: {
+        firstName,
+        lastName,
+        phone,
+        bio,
+        username,
+        occupation,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        bio: true,
+        username: true,
+        occupation: true,
+      },
+    });
+
+    res.json({ user: updatedUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error updating user" });
+  }
+});
+
+
+// Route to change password (would need additional validation)
+userRouter.put('/me/password', userMiddleware, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  
+try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await prisma.user.update({
+      where: { id: req.userId },
+      data: { password: newPassword },
+    });
+
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    console.error("Password update error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+userRouter.get("/course/:courseId", userMiddleware, async (req, res) => {
   const userId = req.userId;
   const courseId = parseInt(req.params.courseId);
 
@@ -106,6 +159,82 @@ userRouter.get("/:courseId", userMiddleware, async (req, res) => {
     res.json({ message: "Course found", course, isPurchased });
   } catch (error) {
     console.error("Error fetching course:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// User Dashboard
+
+
+userRouter.get("/dashboard", userMiddleware, async (req, res) => {
+  const userId = req.userId;
+
+  try {
+    // 1. Purchased Courses
+    const purchases = await prisma.purchase.findMany({
+      where: { userId },
+      include: {
+        course: true,
+      },
+    });
+    const purchasedCourses = purchases.map(p => p.course);
+
+    // 2. Active Courses (started but not completed)
+    const activeCourses = await prisma.courseProgress.findMany({
+      where: {
+        userId,
+        completed: false,
+      },
+      include: {
+        course: true,
+      },
+    });
+
+    // 3. Completed Courses
+    const completedCourses = await prisma.courseProgress.findMany({
+      where: {
+        userId,
+        completed: true,
+      },
+      include: {
+        course: true,
+      },
+    });
+
+    // 4. Course Progress
+    const progressRecords = await prisma.courseProgress.findMany({
+      where: { userId },
+      include: { course: true },
+    });
+
+    const courseProgress = progressRecords.map(progress => ({
+      courseId: progress.courseId,
+      title: progress.course.title,
+      completedPercentage: progress.completedPercentage,
+    }));
+
+    // 5. Recent Courses (latest 5, excluding already purchased)
+    const recentCourses = await prisma.course.findMany({
+      where: {
+        NOT: {
+          id: {
+            in: purchasedCourses.map(c => c.id),
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+
+    res.json({
+      purchasedCourses,
+      activeCourses: activeCourses.map(p => p.course),
+      completedCourses: completedCourses.map(p => p.course),
+      courseProgress,
+      recentCourses,
+    });
+  } catch (error) {
+    console.error("Dashboard Error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });

@@ -12,7 +12,7 @@ API.interceptors.request.use((req) => {
     req.headers.Authorization = token;
   } else if (req.url.startsWith("/user") || req.url.startsWith("/course")) {
     if (token) {
-      req.headers.Authorization = token;
+      req.headers.Authorization = `Bearer ${token}`;
     }
   }
 

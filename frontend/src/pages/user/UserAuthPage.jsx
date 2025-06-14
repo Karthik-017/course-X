@@ -23,32 +23,6 @@ const UserAuthPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!isSignIn) {
-      // Validation for Sign Up
-      if (form.firstName.trim().length < 3) {
-        setMessage("First name must be at least 3 characters long");
-        return;
-      }
-
-      const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
-      if (!gmailRegex.test(form.email)) {
-        setMessage("Only Gmail addresses are allowed");
-        return;
-      }
-
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
-      if (!passwordRegex.test(form.password)) {
-        setMessage("Password must be strong");
-        return;
-      }
-
-      const phoneRegex = /^\d{10}$/;
-      if (!phoneRegex.test(form.phone)) {
-        setMessage("Phone number must be 10 digits");
-        return;
-      }
-    }
-
     try {
       if (isSignIn) {
         const res = await API.post("http://localhost:8000/user/signin", {

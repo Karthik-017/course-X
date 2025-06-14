@@ -11,5 +11,8 @@ npx prisma migrate dev --name init
 
 todo:
 
-section is still created even the order already exists
-same with the content
+should add setings component to user
+files in which changes to be made: 
+        schema.prisma
+        routes/user.js (/me)
+        settings component in frontend

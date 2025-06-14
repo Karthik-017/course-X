@@ -18,7 +18,8 @@ const Layout = ({ children }) => {
   } else if (
     location.pathname.startsWith("/user") ||
     location.pathname.startsWith("/courses") ||
-    location.pathname === "/certificates"
+    location.pathname === "/certificates" ||
+    location.pathname === "/rewards" 
   ) {
     SidebarComponent = UserSidebar;
   } else {
